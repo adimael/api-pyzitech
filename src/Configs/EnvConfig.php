@@ -31,7 +31,7 @@ final class EnvConfig
                 continue;
             }
 
-            if (str_contains($line, '='))
+            if (!str_contains($line, '='))
             {
                 continue;
             }
