@@ -8,7 +8,10 @@ echo "Current Timezone: " . RelogioTimeZone::obterTimeZone()->getName() . PHP_EO
 echo "Current Date and Time: " . RelogioTimeZone::agora()->format('d-m-Y H:i:s') . PHP_EOL;
 
 use src\Domain\Entities\Usuario;
+use src\Database\PostgreSQL\Conexao;
+use src\Database\Exceptions\DatabaseConnectionException;
 
+/*
 try {
     $usuario = Usuario::registrar(
         nomeCompleto: 'Adimael Santos da Silva',
@@ -34,4 +37,14 @@ try {
         echo "Criado em: " . $usuario->getCriadoEm()->format('d-m-Y H:i:s') . PHP_EOL;
     } catch (Exception $e) {
         echo "Erro ao registrar usuário: " . $e->getMessage() . PHP_EOL;
+}
+*/
+
+try {
+    $pdo = Conexao::conectar();
+    echo "Conexão com PostgreSQL bem-sucedida!" . PHP_EOL;
+} catch (DatabaseConnectionException $e) {
+    echo "Erro de conexão: " . $e->getMessage() . PHP_EOL;
+} catch (\src\Database\Exceptions\DatabaseException $e) {
+    echo "Erro de banco: " . $e->getMessage() . PHP_EOL;
 }
