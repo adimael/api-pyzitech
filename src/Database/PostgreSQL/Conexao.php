@@ -2,6 +2,10 @@
 
 namespace src\Database\PostgreSQL;
 use src\Database\Exceptions\DatabaseException;
+use src\Database\Exceptions\DatabaseConnectionException;
+use src\Database\Exceptions\DatabaseQueryException;
+use src\Database\Exceptions\DatabaseTransactionException;
+use src\Database\Exceptions\DatabaseIntegrityException;
 
 use PDO;
 use PDOException;
@@ -60,9 +64,9 @@ class Conexao
         try {
             $host = getenv('DB_HOST') ?: 'localhost';
             $port = getenv('DB_PORT') ?: 5432;
-            $database = getenv('DB_DATABASE') ?: '';
-            $username = getenv('DB_USERNAME') ?: '';
-            $password = getenv('DB_PASSWORD') ?: '';
+            $database = getenv('DB_NOME') ?: '';
+            $username = getenv('DB_USUARIO') ?: '';
+            $password = getenv('DB_SENHA') ?: '';
 
             // DSN (Data Source Name) para PostgreSQL
             $dsn = sprintf(
@@ -105,13 +109,30 @@ class Conexao
     {
         $debug = getenv('APP_DEBUG') === 'true';
 
-        $mensagem = $debug 
+        $sqlState = $e->getCode();
+        $mensagem = $debug
             ? "Erro ao conectar ao banco de dados PostgreSQL: " . $e->getMessage()
             : "Erro ao conectar ao banco de dados. Contate o administrador.";
-
         $codigo = $debug ? (int)$e->getCode() : 1;
 
-        // Lança exceção de domínio de infraestrutura
+        // SQLSTATE: https://www.postgresql.org/docs/current/errcodes-appendix.html
+        // 08001, 08006, 08004, 08003: erros de conexão
+        if (in_array($sqlState, ['08001', '08006', '08004', '08003'])) {
+            throw new DatabaseConnectionException($mensagem, $codigo, $e);
+        }
+        // 23000: violação de integridade (chave primária, estrangeira, etc)
+        if (str_starts_with($sqlState, '23')) {
+            throw new DatabaseIntegrityException($mensagem, $codigo, $e);
+        }
+        // 40001, 40P01: erro de transação (deadlock, serialization failure)
+        if (in_array($sqlState, ['40001', '40P01'])) {
+            throw new DatabaseTransactionException($mensagem, $codigo, $e);
+        }
+        // 42000: erro de sintaxe SQL ou permissão
+        if (str_starts_with($sqlState, '42')) {
+            throw new DatabaseQueryException($mensagem, $codigo, $e);
+        }
+        // Fallback: erro genérico
         throw new DatabaseException($mensagem, $codigo, $e);
     }
 
