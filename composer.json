@@ -4,7 +4,7 @@
     "license": "MIT",
     "autoload": {
         "psr-4": {
-            "Adimael\\ApiPyzitech\\": "src/"
+            "src\\": "src/"
         }
     },
     "authors": [
@@ -14,5 +14,7 @@
         }
     ],
     "minimum-stability": "stable",
-    "require": {}
+    "require": {
+        "vlucas/phpdotenv": "^5.6"
+    }
 }
