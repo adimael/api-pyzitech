@@ -1,1 +1,8 @@
+# Ignore dependencias de diretorios
+
 /vendor/
+
+
+# Ignore arquivos
+
+.env
