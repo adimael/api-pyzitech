@@ -8,8 +8,10 @@ echo "Current Timezone: " . RelogioTimeZone::obterTimeZone()->getName() . PHP_EO
 echo "Current Date and Time: " . RelogioTimeZone::agora()->format('d-m-Y H:i:s') . PHP_EOL;
 
 use src\Domain\Entities\Usuario;
-use src\Database\PostgreSQL\Conexao;
+use src\Database\PostgreSQL\Conexao as PostgresConexao;
+use src\Database\Mysql\Conexao as MysqlConexao;
 use src\Database\Exceptions\DatabaseConnectionException;
+use src\Http\Response\Response;
 
 /*
 try {
@@ -40,11 +42,27 @@ try {
 }
 */
 
-try {
-    $pdo = Conexao::conectar();
-    echo "Conexão com PostgreSQL bem-sucedida!" . PHP_EOL;
-} catch (DatabaseConnectionException $e) {
-    echo "Erro de conexão: " . $e->getMessage() . PHP_EOL;
-} catch (\src\Database\Exceptions\DatabaseException $e) {
-    echo "Erro de banco: " . $e->getMessage() . PHP_EOL;
+$driver = getenv('DB_CONEXAO');
+
+try
+{
+    if($driver === 'mysql')
+    {
+        $conexao = MysqlConexao::conectar();
+        echo "Conexão MySQL estabelecida com sucesso!" . PHP_EOL;
+    } elseif($driver === 'pgsql' || $driver === 'postgresql')
+    {
+        $conexao = PostgresConexao::conectar();
+        echo "Conexão PostgreSQL estabelecida com sucesso!" . PHP_EOL;
+    } else {
+        echo "Driver de banco de dados desconhecido ou não suportado: " . ($driver ?? 'não definido') . PHP_EOL;
+    }
+} catch(\Throwable $e)
+{
+    http_response_code(500);
+    (new Response([
+        'erro' => 'Erro ao conectar ao banco de dados',
+        'mensagem' => $e->getMessage()
+    ], 500))->enviar();
 }
+exit;
