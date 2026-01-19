@@ -2,24 +2,20 @@
 
 namespace src\Repositories;
 
-
 use PDO;
 use PDOException;
 use src\Domain\Entities\Usuario;
 use DateTimeImmutable;
 use Ramsey\Uuid\Uuid;
+use src\Database\Exceptions\DatabaseQueryException;
+use InvalidArgumentException;
 
 abstract class UsuarioAbstractRepository implements UsuarioRepositoryInterface
 {
-    /**
-     * Nome da tabela
-     * @var string
-     */
     protected string $tabela = 'usuarios';
 
     /**
-     * Instacia da conexão PDO
-     * @var \PDO
+     * Instância da conexão PDO
      */
     protected PDO $pdo;
 
@@ -29,12 +25,45 @@ abstract class UsuarioAbstractRepository implements UsuarioRepositoryInterface
     protected string $colunaId = 'uuid';
 
     /**
-     * Construtor da classe
-     * @param \PDO $pdo
+     * Colunas permitidas para filtros dinâmicos
+     * chave = nome público | valor = nome real no banco
      */
+    protected array $colunasPermitidas = [
+        'email'         => 'email',
+        'username'      => 'username',
+        'nivel_acesso' => 'nivel_acesso',
+        'ativo'         => 'ativo',
+    ];
+
     public function __construct(PDO $pdo)
     {
         $this->pdo = $pdo;
+    }
+
+    /**
+     * Executa uma operação de banco e converte PDOException
+     * em DatabaseQueryException
+     */
+    protected function executarQuery(callable $operacao, string $mensagemErro): mixed
+    {
+        try {
+            return $operacao();
+        } catch (PDOException $e) {
+            // Violação de unicidade
+            if ($e->getCode() === '23000') {
+                throw new DatabaseQueryException(
+                    'Violação de unicidade no banco de dados',
+                    23000,
+                    $e
+                );
+            }
+
+            throw new DatabaseQueryException(
+                $mensagemErro,
+                (int) $e->getCode(),
+                $e
+            );
+        }
     }
 
     /**
@@ -42,28 +71,28 @@ abstract class UsuarioAbstractRepository implements UsuarioRepositoryInterface
      */
     public function buscarTodos(int $limite = 100, int $offset = 0): array
     {
-        $sql = "SELECT * FROM {$this->tabela} LIMIT :limite OFFSET :offset";
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->bindValue(':limite', $limite, PDO::PARAM_INT);
-        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-        $stmt->execute();
-        
-        $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return $this->executarQuery(function () use ($limite, $offset) {
+            $sql = "SELECT * FROM {$this->tabela} 
+                    ORDER BY criado_em DESC
+                    LIMIT :limite OFFSET :offset";
 
-        return array_map(
-            fn(array $row) => $this->mapearParaEntity($row),
-            $resultados
-        );
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindValue(':limite', $limite, PDO::PARAM_INT);
+            $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+            $stmt->execute();
+
+            $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            return array_map(
+                fn(array $row) => $this->mapearParaEntity($row),
+                $resultados
+            );
+        }, 'Erro ao buscar usuários');
     }
 
     public function buscarPorUuid(string $uuid): ?Usuario
     {
-        $sql = "SELECT * FROM {$this->tabela} WHERE {$this->colunaId} = :uuid LIMIT 1";
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->bindValue(':uuid', $uuid);
-        $stmt->execute();
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $row !== false ? $this->mapearParaEntity($row) : null;
+        return $this->buscarUmPor($this->colunaId, $uuid);
     }
 
     public function buscarPorUsername(string $username): ?Usuario
@@ -78,45 +107,84 @@ abstract class UsuarioAbstractRepository implements UsuarioRepositoryInterface
 
     public function buscarTodosPor(string $coluna, mixed $valor): array
     {
-        $sql = "SELECT * FROM {$this->tabela} WHERE {$coluna} = :valor";
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->bindValue(':valor', $valor);
-        $stmt->execute();
+        $colunaBanco = $this->resolverColuna($coluna);
 
-        $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return $this->executarQuery(function () use ($colunaBanco, $valor) {
+            $sql = "SELECT * FROM {$this->tabela}
+                    WHERE {$colunaBanco} = :valor";
 
-        return array_map(
-            fn(array $row) => $this->mapearParaEntity($row),
-            $resultados
-        );
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindValue(':valor', $valor);
+            $stmt->execute();
+
+            $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            return array_map(
+                fn(array $row) => $this->mapearParaEntity($row),
+                $resultados
+            );
+        }, "Erro ao buscar usuários por {$colunaBanco}");
     }
 
     public function deletar(string $uuid): void
     {
-        $sql = "DELETE FROM {$this->tabela} WHERE {$this->colunaId} = :uuid";
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->bindValue(':uuid', $uuid);
-        $stmt->execute();
+        $this->executarQuery(function () use ($uuid) {
+            $sql = "DELETE FROM {$this->tabela}
+                    WHERE {$this->colunaId} = :uuid";
+
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindValue(':uuid', $uuid);
+            $stmt->execute();
+        }, 'Erro ao deletar usuário');
     }
 
     public function contar(): int
     {
-        $sql = "SELECT COUNT(*) FROM {$this->tabela}";
-        return (int) $this->pdo->query($sql)->fetchColumn();
+        return $this->executarQuery(function () {
+            $stmt = $this->pdo->prepare(
+                "SELECT COUNT(*) FROM {$this->tabela}"
+            );
+            $stmt->execute();
+
+            return (int) $stmt->fetchColumn();
+        }, 'Erro ao contar usuários');
     }
 
     protected function buscarUmPor(string $coluna, mixed $valor): ?Usuario
     {
-        $sql = "SELECT * FROM {$this->tabela} WHERE {$coluna} = :valor LIMIT 1";
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->bindValue(':valor', $valor);
-        $stmt->execute();
+        $colunaBanco = $this->resolverColuna($coluna);
 
-        $resultado = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $this->executarQuery(function () use ($colunaBanco, $valor) {
+            $sql = "SELECT * FROM {$this->tabela}
+                    WHERE {$colunaBanco} = :valor
+                    LIMIT 1";
 
-        return $resultado === false
-            ? null
-            : $this->mapearParaEntity($resultado);
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindValue(':valor', $valor);
+            $stmt->execute();
+
+            $resultado = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            return $resultado === false
+                ? null
+                : $this->mapearParaEntity($resultado);
+        }, "Erro ao buscar usuário por {$colunaBanco}");
+    }
+
+    /**
+     * Resolve e valida a coluna permitida
+     */
+    protected function resolverColuna(string $coluna): string
+    {
+        if ($coluna === $this->colunaId) {
+            return $this->colunaId;
+        }
+
+        if (!isset($this->colunasPermitidas[$coluna])) {
+            throw new InvalidArgumentException('Coluna inválida para busca');
+        }
+
+        return $this->colunasPermitidas[$coluna];
     }
 
     /**
@@ -124,26 +192,25 @@ abstract class UsuarioAbstractRepository implements UsuarioRepositoryInterface
      */
     protected function mapearParaEntity(array $dados): Usuario
     {
-        return new Usuario(
+        return Usuario::reconstituir(
             Uuid::fromString($dados['uuid']),
-            $dados['nomeCompleto'],
+            $dados['nome_completo'],
             $dados['username'],
             $dados['email'],
-            $dados['senhaHash'],
-            $dados['nivelAcesso'],
+            $dados['senha_hash'],
+            $dados['nivel_acesso'],
             (bool) $dados['ativo'],
-            new DateTimeImmutable($dados['criadoEm']),
-            $dados['urlAvatar'] ?? null,
-            $dados['urlCapa'] ?? null,
+            new DateTimeImmutable($dados['criado_em']),
+            $dados['url_avatar'] ?? null,
+            $dados['url_capa'] ?? null,
             $dados['biografia'] ?? null,
-            $dados['tokenRecuperacaoSenha'] ?? null,
-            $dados['tokenVerificacaoEmail'] ?? null,
-            isset($dados['atualizadoEm'])
-                ? new DateTimeImmutable($dados['atualizadoEm'])
+            $dados['token_recuperacao_senha'] ?? null,
+            $dados['token_verificacao_email'] ?? null,
+            isset($dados['atualizado_em']) && $dados['atualizado_em'] !== null
+                ? new DateTimeImmutable($dados['atualizado_em'])
                 : null
         );
     }
 
     abstract public function salvar(Usuario $usuario): void;
-
 }
