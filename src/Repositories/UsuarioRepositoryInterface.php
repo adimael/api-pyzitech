@@ -7,59 +7,60 @@ use src\Domain\Entities\Usuario;
 interface UsuarioRepositoryInterface
 {
     /**
-     * Busca todos os registros
-     * @param int $limite
-     * @param int $offset
+     * Retorna usuários paginados
+     * 
      * @return Usuario[]
      */
     public function buscarTodos(int $limite = 100, int $offset = 0): array;
 
     /**
-     * Busca um Registro pelo UUID
-     * @param string $uuid
-     * @return Usuario|null
+     * Busca um usuário pelo UUID
      */
     public function buscarPorUuid(string $uuid): ?Usuario;
 
     /**
-     * Buscar por username
-     * @param string $username
-     * @return Usuario|null
+     * Busca um usuário pelo username
      */
     public function buscarPorUsername(string $username): ?Usuario;
 
     /**
-     * Buscar por email
-     * @param string $email
-     * @return Usuario|null
+     * Busca um usuário pelo e-mail
      */
     public function buscarPorEmail(string $email): ?Usuario;
 
     /**
-     * Criar um novo registro
-     * @param Usuario $usuario
-     * @return void
+     * Verifica se e-mail já existe
+     */
+    public function emailExiste(string $email, ?string $excluirUuid = null): bool;
+
+    /**
+     * Verifica se username já existe
+     */
+    public function usernameExiste(string $username, ?string $excluirUuid = null): bool;
+
+    /**
+     * Salva (cria ou atualiza) um usuário
      */
     public function salvar(Usuario $usuario): void;
 
     /**
-     * Deleta um registro pelo UUID
-     * @param string $uuid
-     * @return void
+     * Remove um usuário pelo UUID
      */
     public function deletar(string $uuid): void;
 
     /**
-     * Conta o total de registros
-     * @return int
+     * Retorna total de usuários
      */
     public function contar(): int;
 
     /**
-     * Verifica se um registro existe pelo UUID
-     * @param string $uuid
+     * Busca usuários por nome com paginação
+     * 
      * @return Usuario[]
      */
-    public function buscarTodosPor(string $coluna, mixed $valor): array;
-
+    public function buscarPorNomePaginado(
+        string $nome,
+        int $pagina = 1,
+        int $porPagina = 10
+    ): array;
 }
