@@ -29,7 +29,9 @@ final class Usuario
     private DateTimeImmutable $criadoEm;
     private ?DateTimeImmutable $atualizadoEm;
 
-    public function __construct(
+    private const NIVEIS_VALIDOS = ['usuario', 'admin', 'moderador'];
+
+    private function __construct(
         UuidInterface $uuid,
         string $nomeCompleto,
         string $username,
@@ -62,6 +64,13 @@ final class Usuario
         $this->atualizadoEm = $atualizadoEm;
     }
 
+    private static function validarNivelAcesso(string $nivel): void
+    {
+        if (!in_array($nivel, self::NIVEIS_VALIDOS, true)) {
+            throw new \InvalidArgumentException('Nível de acesso inválido.');
+        }
+    }
+
     public static function registrar(
         string $nomeCompleto,
         string $username,
@@ -76,15 +85,14 @@ final class Usuario
         self::validarUsername($username);
         self::validarEmail($email);
         self::validarSenha($senha);
-        // Se quiser, pode validar nível de acesso também
-        // self::validarNivelAcesso($nivelAcesso);
+        self::validarNivelAcesso($nivelAcesso);
 
         return new self(
             Uuid::uuid4(),
             $nomeCompleto,
             $username,
             $email,
-            password_hash($senha, PASSWORD_BCRYPT),
+            password_hash($senha, PASSWORD_DEFAULT),
             $nivelAcesso,
             true,
             RelogioTimeZone::agora(),
@@ -95,6 +103,40 @@ final class Usuario
             null, // tokenVerificacaoEmail
             null  // atualizadoEm
         );
+    }
+
+    public static function reconstituir(
+            UuidInterface $uuid,
+            string $nomeCompleto,
+            string $username,
+            string $email,
+            string $senhaHash,
+            string $nivelAcesso,
+            bool $ativo,
+            DateTimeImmutable $criadoEm,
+            ?string $urlAvatar = null,
+            ?string $urlCapa = null,
+            ?string $biografia = null,
+            ?string $tokenRecuperacaoSenha = null,
+            ?string $tokenVerificacaoEmail = null,
+            ?DateTimeImmutable $atualizadoEm = null
+        ): self {
+            return new self(
+                $uuid,
+                $nomeCompleto,
+                $username,
+                $email,
+                $senhaHash,
+                $nivelAcesso,
+                $ativo,
+                $criadoEm,
+                $urlAvatar,
+                $urlCapa,
+                $biografia,
+                $tokenRecuperacaoSenha,
+                $tokenVerificacaoEmail,
+                $atualizadoEm
+            );
     }
 
     private static function validarEmail(string $email): void
@@ -112,8 +154,24 @@ final class Usuario
         if (trim($username) === '') {
             throw new InvalidUsernameException('Username não informado.');
         }
-        if (!preg_match('/^[a-zA-Z0-9_]{3,}$/', $username)) {
-            throw new InvalidUsernameException('Username deve ter ao menos 3 caracteres e conter apenas letras, números ou underline.');
+        // Não pode iniciar com caractere especial
+        if (preg_match('/^[._]/', $username)) {
+            throw new InvalidUsernameException('Username não pode iniciar com caractere especial (ponto ou underline).');
+        }
+        // Deve ter ao menos 3 caracteres
+        if (strlen($username) < 3) {
+            throw new InvalidUsernameException('Username deve ter ao menos 3 caracteres.');
+        }
+        // Só pode conter letras, números, ponto e underline
+        if (!preg_match('/^[a-zA-Z0-9._]+$/', $username)) {
+            throw new InvalidUsernameException('Username só pode conter letras, números, ponto ou underline.');
+        }
+        // Só pode conter UM caractere especial (ponto ou underline)
+        $matches = preg_match_all('/[._]/', $username);
+        if ($matches !== false && $matches > 1) {
+            throw new InvalidUsernameException(
+                'Username pode conter apenas um caractere especial (ponto ou underline).'
+            );
         }
     }
 
@@ -126,10 +184,13 @@ final class Usuario
             throw new InvalidPasswordException('Senha muito curta. Mínimo de 8 caracteres.');
         }
         // Exemplo: pelo menos uma letra maiúscula, uma minúscula e um número
-        if (!preg_match('/[A-Z]/', $senha)) {
+        $temMaiuscula = preg_match('/[A-Z]/', $senha);
+        $temMinuscula = preg_match('/[a-z]/', $senha);
+
+        if (!$temMaiuscula) {
             throw new InvalidPasswordException('Senha deve conter ao menos uma letra maiúscula.');
         }
-        if (!preg_match('/[a-z]/', $senha)) {
+        if (!$temMinuscula) {
             throw new InvalidPasswordException('Senha deve conter ao menos uma letra minúscula.');
         }
         if (!preg_match('/[0-9]/', $senha)) {
@@ -195,6 +256,93 @@ final class Usuario
     public function getAtualizadoEm(): ?DateTimeImmutable
     {
         return $this->atualizadoEm;
+    }
+
+    public function setNomeCompleto(string $nomeCompleto): void
+    {
+        $this->nomeCompleto = $nomeCompleto;
+    }
+
+    public function setUsername(string $username): void
+    {
+        self::validarUsername($username);
+        $this->username = $username;
+    }
+
+    public function setEmail(string $email): void
+    {
+        self::validarEmail($email);
+        $this->email = $email;
+    }
+
+    public function verificarSenha(string $senhaPlana): bool
+    {
+        return password_verify($senhaPlana, $this->senhaHash);
+    }
+
+    public function alterarSenha(string $senhaPlana): void
+    {
+        self::validarSenha($senhaPlana);
+        $this->senhaHash = password_hash($senhaPlana, PASSWORD_DEFAULT);
+    }
+
+    public function setUrlAvatar(?string $urlAvatar): void
+    {
+        $this->urlAvatar = $urlAvatar;
+    }
+
+    public function setUrlCapa(?string $urlCapa): void
+    {
+        $this->urlCapa = $urlCapa;
+    }
+
+    public function setBiografia(?string $biografia): void
+    {
+        $this->biografia = $biografia;
+    }
+
+    public function ativar(): void
+    {
+        $this->ativo = true;
+        $this->atualizadoEm = RelogioTimeZone::agora();
+    }
+
+    public function desativar(): void
+    {
+        $this->ativo = false;
+        $this->atualizadoEm = RelogioTimeZone::agora();
+    }
+
+    public function promoverPara(string $nivelAcesso): void
+    {
+        if (!in_array($nivelAcesso, self::NIVEIS_VALIDOS, true)) {
+            throw new \InvalidArgumentException('Nível de acesso inválido.');
+        }
+
+        $this->nivelAcesso = $nivelAcesso;
+        $this->atualizadoEm = RelogioTimeZone::agora();
+    }
+
+    public function gerarTokenRecuperacaoSenha(string $token): void
+    {
+        $this->tokenRecuperacaoSenha = $token;
+        $this->atualizadoEm = RelogioTimeZone::agora();
+    }
+
+    public function gerarTokenVerificacaoEmail(string $token): void
+    {
+        $this->tokenVerificacaoEmail = $token;
+        $this->atualizadoEm = RelogioTimeZone::agora();
+    }
+
+    public function setCriadoEm(DateTimeImmutable $criadoEm): void
+    {
+        $this->criadoEm = $criadoEm;
+    }
+
+    public function setAtualizadoEm(?DateTimeImmutable $atualizadoEm): void
+    {
+        $this->atualizadoEm = $atualizadoEm;
     }
 
     public function __toString(): string
