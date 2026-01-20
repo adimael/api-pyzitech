@@ -130,8 +130,8 @@ try {
 }
 */
 
-/* Exclusão de usuário */
-
+/* Ativar/Desativar usuário */
+/*
 $uuid = '429e7733-dd62-409a-a360-5f5a40d2c36c';
 try {
     $usuarioService->desativar($uuid);
@@ -139,3 +139,15 @@ try {
 } catch (Exception $e) {
     echo "Erro ao desativar usuário: " . $e->getMessage() . PHP_EOL;
 }
+*/
+
+/* Excluir usuário */
+/*
+$uuid = '429e7733-dd62-409a-a360-5f5a40d2c36c';
+try {
+    $usuarioService->deletar($uuid);
+    echo "Usuário excluído com sucesso!" . PHP_EOL;
+} catch (Exception $e) {
+    echo "Erro ao excluir usuário: " . $e->getMessage() . PHP_EOL;
+}
+*/
