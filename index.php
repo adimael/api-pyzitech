@@ -4,8 +4,8 @@ use src\Utils\RelogioTimeZone;
 
 require_once __DIR__ . '/bootstrap.php';
 
-echo "Current Timezone: " . RelogioTimeZone::obterTimeZone()->getName() . PHP_EOL;
-echo "Current Date and Time: " . RelogioTimeZone::agora()->format('d-m-Y H:i:s') . PHP_EOL;
+//echo "Current Timezone: " . RelogioTimeZone::obterTimeZone()->getName() . PHP_EOL;
+//echo "Current Date and Time: " . RelogioTimeZone::agora()->format('d-m-Y H:i:s') . PHP_EOL;
 
 use src\Domain\Entities\Usuario;
 use src\Database\PostgreSQL\Conexao as PostgresConexao;
@@ -13,11 +13,74 @@ use src\Database\Exceptions\DatabaseConnectionException;
 use src\Http\Response\Response;
 use src\Repositories\UsuarioRepository;
 use src\Services\UsuarioService;
+use src\Http\Controllers\UsuarioController;
+use src\Http\Controllers\IndexController;
 
 // Conexão apenas com PostgreSQL, conforme .env
 $pdo = PostgresConexao::conectar();
 $usuarioRepo = new UsuarioRepository($pdo);
 $usuarioService = new UsuarioService($usuarioRepo);
+$controller = new UsuarioController($usuarioService);
+$indexController = new IndexController();
+
+/* Teste via controller */
+$response = $indexController->index();
+$response->Enviar();
+
+
+/* Criação de usuário via controller */
+/*
+$data = [
+    'nome_completo' => 'Maria Silva',
+    'username'      => 'maria.silva',
+    'email'         => 'maria.silva@example.com',
+    'senha'         => '12345678Maria',
+    'url_avatar'    => null,
+    'url_capa'      => null,
+    'biografia'     => 'QA Tester',
+    'nivel_acesso'  => 'usuario'
+];
+$response = $controller->criar($data);
+$response->Enviar();
+*/
+
+/* Listagem de usuários via controller */
+/*
+$response = $controller->listar(1, 10);
+$response->Enviar();
+*/
+
+/* Busca de usuário por UUID */
+/*
+$uuid = '7f1c2f3a-50bb-4476-8c59-30dba83ca480';
+$response = $controller->buscar($uuid);
+$response->Enviar();
+*/
+
+/* Desativação de usuário */
+/*
+$uuid = 'c5bca4b0-131f-406a-a572-a3f3adfcbdaa';
+$response = $controller->desativar($uuid);
+$response->Enviar();
+*/
+
+/* Ativação de usuário */
+/*
+$uuid = 'c5bca4b0-131f-406a-a572-a3f3adfcbdaa';
+$response = $controller->ativar($uuid);
+$response->Enviar();
+*/
+
+/* Deleção de usuário */
+/*
+$uuid = 'c5bca4b0-131f-406a-a572-a3f3adfcbdaa';
+$response = $controller->deletar($uuid);
+$response->Enviar();
+*/
+
+/* Fim dos testes via controller */
+
+/* Testes diretos no service/repository */
 
 //var_dump($usuarioService->desativar('429e7733-dd62-409a-a360-5f5a40d2c36c'));
 
@@ -151,3 +214,5 @@ try {
     echo "Erro ao excluir usuário: " . $e->getMessage() . PHP_EOL;
 }
 */
+
+/* Fim dos testes diretos no service/repository */
