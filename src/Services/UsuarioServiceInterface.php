@@ -20,4 +20,6 @@ interface UsuarioServiceInterface
     public function desativar(string $uuid): void;
 
     public function ativar(string $uuid): void;
+
+    public function deletar(string $uuid): void;
 }

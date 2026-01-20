@@ -67,4 +67,13 @@ class UsuarioService implements UsuarioServiceInterface
         $usuario->ativar();
         $this->repository->salvar($usuario);
     }
+
+    public function deletar(string $uuid): void
+    {
+        $usuario = $this->repository->buscarPorUuid($uuid);
+        if (!$usuario) {
+            throw new DomainException('Usuário não encontrado.');
+        }
+        $this->repository->deletar($uuid);
+    }
 }
