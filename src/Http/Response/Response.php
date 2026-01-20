@@ -15,6 +15,17 @@ class Response
         $this->headers = $headers;
     }
 
+    public static function json(mixed $data, int $status = 200): self
+    {
+        return new self(
+            body: $data,
+            status: $status,
+            headers: [
+                'Content-Type' => 'application/json; charset=utf-8'
+            ]
+        );
+    }
+
     public function setStatus(int $status): self
     {
         $this->status = $status;
