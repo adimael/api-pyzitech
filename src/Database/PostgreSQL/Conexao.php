@@ -62,11 +62,11 @@ class Conexao
     private static function criarConexao(): PDO
     {
         try {
-            $host = getenv('DB_HOST') ?: 'localhost';
-            $port = getenv('DB_PORT') ?: 5432;
-            $database = getenv('DB_NOME') ?: '';
-            $username = getenv('DB_USUARIO') ?: '';
-            $password = getenv('DB_SENHA') ?: '';
+            $host = $_ENV['DB_HOST'] ?? 'localhost';
+            $port = $_ENV['DB_PORT'] ?? 5432;
+            $database = $_ENV['DB_NOME'] ?? '';
+            $username = $_ENV['DB_USUARIO'] ?? '';
+            $password = $_ENV['DB_SENHA'] ?? '';
 
             // DSN (Data Source Name) para PostgreSQL
             $dsn = sprintf(

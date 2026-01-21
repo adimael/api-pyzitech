@@ -55,7 +55,6 @@ class Conexao
         if (self::$pdo === null) {
             self::$pdo = self::criarConexao();
         }
-
         return self::$pdo;
     }
 
@@ -68,18 +67,17 @@ class Conexao
     private static function criarConexao(): PDO
     {
         try {
-            $driver = getenv('DB_CONEXAO') ?: 'mysql';
-            $host = getenv('DB_HOST') ?: 'localhost';
-            $port = getenv('DB_PORT') ?: 3306;
-            $database = getenv('DB_NOME') ?: '';
-            $username = getenv('DB_USUARIO') ?: '';
-            $password = getenv('DB_SENHA') ?: '';
-            $charset = getenv('DB_CHARSET') ?: 'utf8mb4';
+            $host = $_ENV['DB_HOST'] ?? 'localhost';
+            $port = $_ENV['DB_PORT'] ?? 3306;
+            $database = $_ENV['DB_NOME'] ?? '';
+            $username = $_ENV['DB_USUARIO'] ?? '';
+            $password = $_ENV['DB_SENHA'] ?? '';
+            $charset = $_ENV['DB_CHARSET'] ?? 'utf8mb4';
+            $collation = $_ENV['DB_COLLATION'] ?? 'utf8mb4_unicode_ci';
 
-            // DSN (Data Source Name)
+            // DSN (Data Source Name) para MySQL
             $dsn = sprintf(
-                '%s:host=%s;port=%s;dbname=%s;charset=%s',
-                $driver,
+                'mysql:host=%s;port=%s;dbname=%s;charset=%s',
                 $host,
                 $port,
                 $database,
@@ -91,16 +89,14 @@ class Conexao
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 PDO::ATTR_EMULATE_PREPARES => false,
-                PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES '{$charset}' COLLATE '" . (getenv('DB_COLLATION') ?: 'utf8mb4_unicode_ci') . "'",
                 PDO::ATTR_PERSISTENT => false, // Conexão não persistente por segurança
+                PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES '{$charset}' COLLATE '{$collation}'",
                 PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT => false, // Ajustar conforme necessário
             ];
 
             // Criação da instância PDO
             $pdo = new PDO($dsn, $username, $password, $options);
-
             return $pdo;
-
         } catch (PDOException $e) {
             self::tratarErroCustomizada($e);
         }
