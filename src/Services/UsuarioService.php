@@ -34,54 +34,61 @@ class UsuarioService implements UsuarioServiceInterface
 
     public function atualizar(string $uuid, array $data): void
     {
-        $usuario = $this->repository->buscarPorUuid($uuid);
-        if (!$usuario) {
-            throw new DomainException('Usuário não encontrado.');
-        }
+        try {
+            $usuario = $this->repository->buscarPorUuid($uuid);
+            if (!$usuario) {
+                throw new DomainException('Usuário não encontrado.');
+            }
 
-        $camposPermitidos = [
-            'nome_completo', 'username', 'email', 'senha', 'url_avatar', 'url_capa', 'biografia', 'nivel_acesso'
-        ];
-        $camposInvalidos = array_diff(array_keys($data), $camposPermitidos);
-        if (!empty($camposInvalidos)) {
-            throw new DomainException('Campos inválidos no update: ' . implode(', ', $camposInvalidos));
-        }
+            $camposPermitidos = [
+                'nome_completo', 'username', 'email', 'senha', 'url_avatar', 'url_capa', 'biografia', 'nivel_acesso'
+            ];
+            $camposInvalidos = array_diff(array_keys($data), $camposPermitidos);
+            if (!empty($camposInvalidos)) {
+                throw new DomainException('Campos inválidos no update: ' . implode(', ', $camposInvalidos));
+            }
 
-        // Atualiza campos se enviados
-        if (isset($data['nome_completo'])) {
-            $usuario->setNomeCompleto($data['nome_completo']);
-        }
-        if (isset($data['username'])) {
-            $usuario->setUsername($data['username']);
-        }
-        if (isset($data['email'])) {
-            $usuario->setEmail($data['email']);
-        }
-        if (isset($data['senha'])) {
-            $usuario->alterarSenha($data['senha']);
-        }
-        if (isset($data['url_avatar'])) {
-            $usuario->setUrlAvatar($data['url_avatar']);
-        }
-        if (isset($data['url_capa'])) {
-            $usuario->setUrlCapa($data['url_capa']);
-        }
-        if (isset($data['biografia'])) {
-            $usuario->setBiografia($data['biografia']);
-        }
-        if (isset($data['nivel_acesso'])) {
-            $usuario->promoverPara($data['nivel_acesso']);
-        }
-        $usuario->setAtualizadoEm(new \DateTimeImmutable());
+            // Atualiza campos se enviados
+            if (isset($data['nome_completo'])) {
+                $usuario->setNomeCompleto($data['nome_completo']);
+            }
+            if (isset($data['username'])) {
+                $usuario->setUsername($data['username']);
+            }
+            if (isset($data['email'])) {
+                $usuario->setEmail($data['email']);
+            }
+            if (isset($data['senha'])) {
+                $usuario->alterarSenha($data['senha']);
+            }
+            if (isset($data['url_avatar'])) {
+                $usuario->setUrlAvatar($data['url_avatar']);
+            }
+            if (isset($data['url_capa'])) {
+                $usuario->setUrlCapa($data['url_capa']);
+            }
+            if (isset($data['biografia'])) {
+                $usuario->setBiografia($data['biografia']);
+            }
+            if (isset($data['nivel_acesso'])) {
+                $usuario->promoverPara($data['nivel_acesso']);
+            }
+            $usuario->setAtualizadoEm(new \DateTimeImmutable());
 
-        // Valida unicidade
-        if ($this->repository->emailExiste($usuario->getEmail(), $uuid)) {
-            throw new DomainException('E-mail já cadastrado.');
+            // Valida unicidade
+            if ($this->repository->emailExiste($usuario->getEmail(), $uuid)) {
+                throw new DomainException('E-mail já cadastrado.');
+            }
+            if ($this->repository->usernameExiste($usuario->getUsername(), $uuid)) {
+                throw new DomainException('Username já cadastrado.');
+            }
+            $this->repository->salvar($usuario);
+        } catch (\RuntimeException $e) {
+            // Erro de persistência (ex: nenhuma linha afetada)
+            throw new DomainException($e->getMessage(), 500, $e);
+        } catch (\Throwable $e) {
+            throw new DomainException('Erro inesperado ao atualizar usuário', 500, $e);
         }
-        if ($this->repository->usernameExiste($usuario->getUsername(), $uuid)) {
-            throw new DomainException('Username já cadastrado.');
-        }
-        $this->repository->salvar($usuario);
     }
 
     public function buscarPorUuid(string $uuid): ?Usuario
