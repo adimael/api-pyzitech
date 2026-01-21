@@ -6,9 +6,11 @@ use src\Domain\Entities\Usuario;
 
 interface UsuarioServiceInterface
 {
+    public function emailExiste(string $email): bool;
+    public function usernameExiste(string $username): bool;
     public function criar(Usuario $usuario): void;
 
-    public function atualizar(Usuario $usuario): void;
+    public function atualizar(string $uuid, array $dados): void;
 
     public function buscarPorUuid(string $uuid): ?Usuario;
 
