@@ -65,6 +65,9 @@ class UsuarioRepository extends UsuarioAbstractRepository
                     $stmt->bindValue(':uuid', $uuid);
                     $stmt->bindValue(':atualizado_em', $agora);
                     $stmt->execute();
+                    if ($stmt->rowCount() === 0) {
+                        throw new \RuntimeException('Falha ao atualizar: Nenhuma linha afetada. Verifique se o UUID existe e se os dados realmente mudaram.');
+                    }
                 } else {
                     // INSERT
                     $sql = "INSERT INTO {$this->tabela} 
