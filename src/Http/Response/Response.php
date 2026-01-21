@@ -46,17 +46,21 @@ class Response
 
     public function Enviar(): void
     {
-        http_response_code($this->status);
-        foreach ($this->headers as $name => $value) {
-            header("$name: $value");
+        if (!headers_sent()) {
+            http_response_code($this->status);
+            foreach ($this->headers as $name => $value) {
+                header("$name: $value");
+            }
         }
+
         if (is_array($this->body) || is_object($this->body)) {
             if (!isset($this->headers['Content-Type'])) {
-                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode($this->body, JSON_UNESCAPED_UNICODE);
+                return;
             }
-            echo json_encode($this->body, JSON_UNESCAPED_UNICODE);
-        } else {
-            echo $this->body;
         }
+
+        echo is_string($this->body) ? $this->body : json_encode($this->body, JSON_UNESCAPED_UNICODE);
     }
+
 }
