@@ -8,6 +8,15 @@ use DomainException;
 
 class UsuarioService implements UsuarioServiceInterface
 {
+    public function emailExiste(string $email): bool
+    {
+        return $this->repository->emailExiste($email);
+    }
+
+    public function usernameExiste(string $username): bool
+    {
+        return $this->repository->usernameExiste($username);
+    }
     public function __construct(
         private UsuarioRepositoryInterface $repository
     ) {}
@@ -23,9 +32,49 @@ class UsuarioService implements UsuarioServiceInterface
         $this->repository->salvar($usuario);
     }
 
-    public function atualizar(Usuario $usuario): void
+    public function atualizar(string $uuid, array $data): void
     {
-        $uuid = $usuario->getUuid()->toString();
+        $usuario = $this->repository->buscarPorUuid($uuid);
+        if (!$usuario) {
+            throw new DomainException('Usuário não encontrado.');
+        }
+
+        $camposPermitidos = [
+            'nome_completo', 'username', 'email', 'senha', 'url_avatar', 'url_capa', 'biografia', 'nivel_acesso'
+        ];
+        $camposInvalidos = array_diff(array_keys($data), $camposPermitidos);
+        if (!empty($camposInvalidos)) {
+            throw new DomainException('Campos inválidos no update: ' . implode(', ', $camposInvalidos));
+        }
+
+        // Atualiza campos se enviados
+        if (isset($data['nome_completo'])) {
+            $usuario->setNomeCompleto($data['nome_completo']);
+        }
+        if (isset($data['username'])) {
+            $usuario->setUsername($data['username']);
+        }
+        if (isset($data['email'])) {
+            $usuario->setEmail($data['email']);
+        }
+        if (isset($data['senha'])) {
+            $usuario->alterarSenha($data['senha']);
+        }
+        if (isset($data['url_avatar'])) {
+            $usuario->setUrlAvatar($data['url_avatar']);
+        }
+        if (isset($data['url_capa'])) {
+            $usuario->setUrlCapa($data['url_capa']);
+        }
+        if (isset($data['biografia'])) {
+            $usuario->setBiografia($data['biografia']);
+        }
+        if (isset($data['nivel_acesso'])) {
+            $usuario->promoverPara($data['nivel_acesso']);
+        }
+        $usuario->setAtualizadoEm(new \DateTimeImmutable());
+
+        // Valida unicidade
         if ($this->repository->emailExiste($usuario->getEmail(), $uuid)) {
             throw new DomainException('E-mail já cadastrado.');
         }
