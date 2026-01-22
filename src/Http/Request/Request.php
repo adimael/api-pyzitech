@@ -4,15 +4,34 @@ namespace src\Http\Request;
 
 class Request
 {
+    private array $attributes = [];
+    public array $params = [];
+
     public function __construct(
         public array $body = [],
         public array $query = [],
         public array $headers = [],
-        public ?string $token = null,
         public ?string $method = null,
         public ?string $path = null,
         public ?string $rawBody = null
     ) {}
+
+    public function withAttribute(string $key, mixed $value): self
+    {
+        $clone = clone $this;
+        $clone->attributes[$key] = $value;
+        return $clone;
+    }
+
+    public function attribute(string $key, mixed $default = null): mixed
+    {
+        return $this->attributes[$key] ?? $default;
+    }
+
+    public function param(string $key): ?string
+    {
+        return $this->params[$key] ?? null;
+    }
 
     public function header(string $name): ?string
     {
@@ -46,7 +65,6 @@ class Request
             'body' => $this->body,
             'query' => $this->query,
             'headers' => $this->headers,
-            'token' => $this->token,
             'method' => $this->method,
             'path' => $this->path,
             'rawBody' => $this->rawBody,
