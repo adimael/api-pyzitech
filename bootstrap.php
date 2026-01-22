@@ -9,6 +9,18 @@ use Dotenv\Dotenv;
 $dotenv = Dotenv::createImmutable(__DIR__);
 $dotenv->load();
 
-use src\Configs\EnvConfig;
+// Inicialização de timezone
+date_default_timezone_set($_ENV['APP_TIMEZONE'] ?? 'UTC');
 
-EnvConfig::carregar();
+// Inicialização de conexões e dependências globais
+use src\Database\PostgreSQL\Conexao as PostgresConexao;
+use src\Repositories\UsuarioRepository;
+use src\Services\UsuarioService;
+use src\Http\Controllers\UsuarioController;
+use src\Http\Controllers\IndexController;
+
+$pdo = PostgresConexao::conectar();
+$usuarioRepo = new UsuarioRepository($pdo);
+$usuarioService = new UsuarioService($usuarioRepo);
+$usuarioController = new UsuarioController($usuarioService);
+$indexController = new IndexController();
