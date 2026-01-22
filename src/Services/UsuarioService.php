@@ -87,7 +87,7 @@ class UsuarioService implements UsuarioServiceInterface
             // Erro de persistência (ex: nenhuma linha afetada)
             throw new DomainException($e->getMessage(), 500, $e);
         } catch (\Throwable $e) {
-            throw new DomainException('Erro inesperado ao atualizar usuário', 500, $e);
+            throw new DomainException($e->getMessage(), 500, $e);
         }
     }
 
