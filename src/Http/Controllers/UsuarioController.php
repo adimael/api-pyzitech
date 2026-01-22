@@ -126,20 +126,16 @@ class UsuarioController
                 'message' => 'Usuário atualizado com sucesso'
             ]);
         } catch (DomainException $e) {
-            $debug = getenv('APP_DEBUG') ?: ($_ENV['APP_DEBUG'] ?? 'false');
-            $details = ($debug === 'true') ? $e->getMessage() : null;
             return Response::json([
                 'status' => 'error',
                 'message' => $e->getMessage(),
-                'details' => $details
+                'details' => $e->getMessage()
             ], $e->getCode() === 500 ? 500 : 400);
         } catch (Throwable $e) {
-            $debug = getenv('APP_DEBUG') ?: ($_ENV['APP_DEBUG'] ?? 'false');
-            $details = ($debug === 'true') ? $e->getMessage() : null;
             return Response::json([
                 'status' => 'error',
                 'message' => 'Erro interno no servidor',
-                'details' => $details
+                'details' => $e->getMessage()
             ], 500);
         }
     }
